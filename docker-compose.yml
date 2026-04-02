@@ -23,17 +23,17 @@ services:
       retries: 5
       start_period: 5s
 
-  # ── Web Terminal (React + Vite) ─────────────────────────────────────────────
+  # ── Web Terminal (Next.js) ──────────────────────────────────────────────────
   web-terminal:
     build:
-      context: ./web-terminal
+      context: ./terminal
       dockerfile: Dockerfile
     container_name: synthetic-bull-frontend
     ports:
       - "3000:3000"
     environment:
-      VITE_API_URL: "http://localhost:8080"
-      VITE_WS_URL: "ws://localhost:8080"
+      NEXT_PUBLIC_API_URL: "http://exchange-engine:8080"
+      NEXT_PUBLIC_WS_URL: "ws://exchange-engine:8080"
     depends_on:
       exchange-engine:
         condition: service_healthy
