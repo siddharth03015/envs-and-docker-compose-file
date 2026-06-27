@@ -1,0 +1,58 @@
+services:
+  # ── Exchange Engine (Go) ─────────────────────────────────────────────────────
+  - type: web
+    name: synthetic-bull-engine
+    runtime: docker
+    dockerfilePath: ./exchange-engine/Dockerfile
+    dockerContext: ./exchange-engine
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: DB_PATH
+        value: /data/exchange.db
+      - key: JWT_SECRET
+        value: synthetic-bull-secret-2026
+    disk:
+      name: exchange-data
+      mountPath: /data
+      sizeGB: 1
+
+  # ── Web Terminal (Next.js) ───────────────────────────────────────────────────
+  - type: web
+    name: synthetic-bull-terminal
+    runtime: docker
+    dockerfilePath: ./terminal/Dockerfile
+    dockerContext: ./terminal
+    plan: free
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: synthetic-bull-engine
+          type: web
+          property: host
+      - key: NEXT_PUBLIC_WS_URL
+        fromService:
+          name: synthetic-bull-engine
+          type: web
+          property: host
+
+  # ── Trading Bots (Python) ────────────────────────────────────────────────────
+  - type: worker
+    name: synthetic-bull-bots
+    runtime: docker
+    dockerfilePath: ./trading-bots/Dockerfile
+    dockerContext: ./trading-bots
+    plan: free
+    envVars:
+      - key: ENGINE_URL
+        fromService:
+          name: synthetic-bull-engine
+          type: web
+          property: host
+      - key: BOT_PASSWORD
+        value: bot-secret-2026
+      - key: METRICS_PORT
+        value: "9090"
