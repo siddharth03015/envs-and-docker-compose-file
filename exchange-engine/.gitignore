@@ -1,0 +1,9 @@
+exchange-engine
+*.exe
+*.test
+*.out
+vendor/
+.env
+*.db
+*.db-shm
+*.db-wal

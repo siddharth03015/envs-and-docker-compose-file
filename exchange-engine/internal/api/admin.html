@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synthetic Bull — Admin</title>
+<style>
+  :root {
+    --bg:      #000;
+    --surface: #0a0a0a;
+    --raised:  #111;
+    --border:  #1d1d1f;
+    --muted:   #86868b;
+    --text:    #f5f5f7;
+    --green:   #34d399;
+    --red:     #f87171;
+    --amber:   #fbbf24;
+    --mono:    'JetBrains Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif;
+         font-size: 13px; line-height: 1.5; min-height: 100vh; }
+
+  /* ── Login screen ── */
+  #lock { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 20px; }
+  #lock h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  #lock h1 span { color: var(--green); }
+  #lock-form { display: flex; gap: 8px; }
+  .inp { background: var(--surface); border: 1px solid var(--border); color: var(--text);
+         padding: 9px 14px; border-radius: 6px; font-size: 13px; outline: none; width: 240px; }
+  .inp:focus { border-color: var(--green); }
+  .btn { padding: 9px 18px; background: var(--green); color: #000; border: none;
+         border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { opacity: .85; }
+  .btn-ghost { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-red { background: rgba(248,113,113,.15); color: var(--red); border: 1px solid rgba(248,113,113,.3); }
+  .btn-red:hover { background: rgba(248,113,113,.25); }
+  .err { color: var(--red); font-size: 12px; }
+  #api-row { display: flex; gap: 8px; align-items: center; }
+  #api-row label { font-size: 11px; color: var(--muted); }
+
+  /* ── App shell ── */
+  #app { display: none; }
+  .topbar { position: sticky; top: 0; z-index: 100; height: 52px;
+            background: rgba(0,0,0,.88); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 24px; gap: 16px; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .topbar h1 span { color: var(--green); }
+  .topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .badge { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px;
+           background: var(--raised); border: 1px solid var(--border); color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+         box-shadow: 0 0 6px var(--green); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Layout ── */
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  /* ── Stat cards ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+  .stat-num { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--text); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Section ── */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+             margin-bottom: 16px; overflow: hidden; }
+  .section-hd { padding: 12px 18px; border-bottom: 1px solid var(--border);
+                display: flex; align-items: center; justify-content: space-between; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em;
+       font-weight: 500; padding: 9px 14px; text-align: left; background: var(--raised);
+       position: sticky; top: 52px; }
+  td { padding: 10px 14px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 12px; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .tbl-wrap { max-height: 380px; overflow: auto; }
+
+  /* ── Prices row ── */
+  .prices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .price-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+                padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .price-sym { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .price-val { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+  .price-chg { font-family: var(--mono); font-size: 12px; }
+
+  /* ── Seed form ── */
+  .seed-form { padding: 16px 18px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px;
+           border-radius: 7px; font-size: 13px; font-weight: 600; z-index: 9999;
+           border: 1px solid; animation: slideUp .3s ease; }
+  @keyframes slideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .toast-ok  { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.3); color: var(--green); }
+  .toast-err { background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3); color: var(--red); }
+
+  .pos { color: var(--green); } .neg { color: var(--red); } .dim { color: var(--muted); }
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+  .chip-buy  { background: rgba(52,211,153,.12); color: var(--green); }
+  .chip-sell { background: rgba(248,113,113,.12); color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ── Lock screen ─────────────────────────────────────────────────────────── -->
+<div id="lock">
+  <h1>Synthetic<span>Bull</span> Admin</h1>
+  <div id="api-row">
+    <label>Engine URL</label>
+    <input class="inp" id="api-url" value="http://localhost:8080" style="width:200px">
+  </div>
+  <form id="lock-form" onsubmit="unlock(event)">
+    <input class="inp" id="secret-inp" type="password" placeholder="Admin secret…" autocomplete="off">
+    <button class="btn" type="submit">Unlock →</button>
+  </form>
+  <div id="lock-err" class="err"></div>
+</div>
+
+<!-- ── App ─────────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <div class="topbar">
+    <div class="dot"></div>
+    <h1>Synthetic<span>Bull</span> <span style="color:var(--muted);font-weight:400">Admin</span></h1>
+    <div class="topbar-right">
+      <span class="badge" id="url-badge">—</span>
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px" onclick="refresh()">↻ Refresh</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px" onclick="lockScreen()">Lock</button>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <!-- prices -->
+    <div class="prices" id="prices-row"></div>
+
+    <!-- stats -->
+    <div class="stats-grid" id="stats-row"></div>
+
+    <!-- seed -->
+    <div class="section">
+      <div class="section-hd">
+        <span class="section-title">Seed Demo User</span>
+        <span class="dim" style="font-size:11px">Creates user + 30-day portfolio history + 15 backdated notes</span>
+      </div>
+      <div class="seed-form">
+        <div class="form-group">
+          <label>Username</label>
+          <input class="inp" id="seed-user" value="demo" style="width:140px">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="inp" id="seed-pass" value="demo" style="width:140px">
+        </div>
+        <button class="btn" onclick="seedUser()">⚡ Seed User</button>
+        <div id="seed-result" style="font-size:12px;color:var(--muted);align-self:center"></div>
+      </div>
+    </div>
+
+    <!-- users -->
+    <div class="section">
+      <div class="section-hd">
+        <span class="section-title">Users</span>
+        <span id="user-count" class="badge">—</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Username</th><th>Cash</th><th>Realized P&L</th>
+            <th>Registered</th><th>Action</th>
+          </tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- recent trades -->
+    <div class="section">
+      <div class="section-hd">
+        <span class="section-title">Recent Trades</span>
+        <span id="trade-count" class="badge">—</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Time</th><th>Symbol</th><th>Side</th>
+            <th>Price</th><th>Qty</th><th>Buyer</th><th>Seller</th>
+          </tr></thead>
+          <tbody id="trades-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+</div><!-- /app -->
+
+<script>
+let SECRET = '';
+let BASE    = 'http://localhost:8080';
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function unlock(e) {
+  e.preventDefault();
+  SECRET = document.getElementById('secret-inp').value.trim();
+  BASE   = document.getElementById('api-url').value.trim().replace(/\/$/, '');
+  document.getElementById('lock-err').textContent = '';
+  try {
+    const data = await apiFetch('/api/admin/overview');
+    document.getElementById('lock').style.display    = 'none';
+    document.getElementById('app').style.display     = 'block';
+    document.getElementById('url-badge').textContent = BASE;
+    render(data);
+    setInterval(silentRefresh, 30000);
+  } catch(err) {
+    document.getElementById('lock-err').textContent = err.message || 'Wrong secret or engine not reachable';
+  }
+}
+
+function lockScreen() {
+  SECRET = '';
+  document.getElementById('secret-inp').value = '';
+  document.getElementById('lock').style.display = 'flex';
+  document.getElementById('app').style.display  = 'none';
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const url = `${BASE}${path}?secret=${encodeURIComponent(SECRET)}`;
+  const r = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': SECRET },
+    ...opts,
+  });
+  if (r.status === 401) throw new Error('Wrong admin secret');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function refresh() { render(await apiFetch('/api/admin/overview')); }
+async function silentRefresh() { try { render(await apiFetch('/api/admin/overview')); } catch{} }
+
+// ── Seed ──────────────────────────────────────────────────────────────────────
+async function seedUser() {
+  const username = document.getElementById('seed-user').value.trim();
+  const password = document.getElementById('seed-pass').value.trim();
+  const el = document.getElementById('seed-result');
+  el.textContent = 'Seeding…';
+  try {
+    const res = await apiFetch('/api/admin/seed-user', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    el.style.color = 'var(--green)';
+    el.textContent = `✓ ${res.message} — login: ${username} / ${password}`;
+    toast(`✓ User "${username}" seeded successfully`, true);
+    refresh();
+  } catch(err) {
+    el.style.color = 'var(--red)';
+    el.textContent = '✗ ' + (err.message || 'Seed failed');
+    toast('✗ ' + err.message, false);
+  }
+}
+
+async function resetUser(username) {
+  if (!confirm(`Reset portfolio for "${username}" to $100,000?`)) return;
+  try {
+    await apiFetch('/api/admin/reset-user', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    });
+    toast(`✓ "${username}" portfolio reset`, true);
+    refresh();
+  } catch(err) { toast('✗ ' + err.message, false); }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(data) {
+  renderPrices(data.prices || {});
+  renderStats(data.stats || {});
+  renderUsers(data.users || []);
+  renderTrades(data.recent_trades || []);
+}
+
+function renderPrices(prices) {
+  const row = document.getElementById('prices-row');
+  const syms = ['BTC-USD', 'ETH-USD', 'SOL-USD'];
+  row.innerHTML = syms.map(sym => {
+    const p = prices[sym];
+    if (!p) return `<div class="price-card"><div><div class="price-sym">${sym}</div><div class="price-val dim">—</div></div></div>`;
+    const chg = p.change_24h_pct ?? 0;
+    const cls = chg >= 0 ? 'pos' : 'neg';
+    return `<div class="price-card">
+      <div>
+        <div class="price-sym">${sym}</div>
+        <div class="price-val">${fmt$(p.last_price)}</div>
+        <div class="price-chg ${cls}">${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg).toFixed(2)}%</div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--muted)">
+        <div>Vol 24h</div>
+        <div style="color:var(--text)">${fmtCompact(p.volume_24h)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderStats(s) {
+  document.getElementById('stats-row').innerHTML = [
+    { label: 'Total Users',     val: (s.total_users ?? 0).toLocaleString(),     sub: 'registered accounts' },
+    { label: 'Total Trades',    val: (s.total_trades ?? 0).toLocaleString(),    sub: 'filled orders' },
+    { label: 'Notes Created',   val: (s.total_notes ?? 0).toLocaleString(),     sub: 'trading journal entries' },
+    { label: 'PnL Snapshots',   val: (s.total_snapshots ?? 0).toLocaleString(), sub: 'equity curve data points' },
+  ].map(c => `
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-num">${c.val}</div>
+      <div class="stat-sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+function renderUsers(users) {
+  document.getElementById('user-count').textContent = users.length + ' users';
+  document.getElementById('users-tbody').innerHTML = users.map(u => {
+    const pnl    = u.realized_pnl ?? 0;
+    const cls    = pnl >= 0 ? 'pos' : 'neg';
+    const isBot  = ['market_maker','momentum_trader','alpha_trader','mean_reversion','market_system'].includes(u.username);
+    return `<tr>
+      <td style="font-weight:600;color:${isBot?'var(--muted)':'var(--text)'}">${u.username}${isBot?' <span class="chip" style="background:rgba(255,255,255,.06);color:var(--muted)">bot</span>':''}</td>
+      <td>${fmt$(u.cash)}</td>
+      <td class="${cls}">${pnl >= 0 ? '+' : ''}${fmt$(pnl)}</td>
+      <td class="dim">${fmtDate(u.created_at)}</td>
+      <td><button class="btn btn-red" style="padding:3px 10px;font-size:11px" onclick="resetUser('${esc(u.username)}')">Reset</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">No users yet</td></tr>';
+}
+
+function renderTrades(trades) {
+  document.getElementById('trade-count').textContent = trades.length + ' recent';
+  document.getElementById('trades-tbody').innerHTML = trades.map(t => {
+    const side = (t.side || t.aggressor_side || '').toUpperCase();
+    return `<tr>
+      <td class="dim">${fmtDate(t.timestamp)}</td>
+      <td style="font-weight:600">${t.symbol}</td>
+      <td><span class="chip chip-${side === 'BUY' ? 'buy' : 'sell'}">${side}</span></td>
+      <td>${fmt$(t.price)}</td>
+      <td>${(+t.quantity).toFixed(5)}</td>
+      <td>${t.buyer || '—'}</td>
+      <td>${t.seller || '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No trades yet</td></tr>';
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+const fmt$ = v => USD.format(+v || 0);
+const esc  = s => s.replace(/'/g, "\\'");
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(typeof ts === 'number' ? ts : ts.replace ? ts : ts);
+  if (isNaN(d)) return String(ts).slice(0, 16);
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function fmtCompact(v) {
+  v = +v || 0;
+  if (v >= 1e9) return `$${(v/1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v/1e6).toFixed(2)}M`;
+  if (v >= 1e3) return `$${(v/1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = `toast ${ok ? 'toast-ok' : 'toast-err'}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+</script>
+</body>
+</html>

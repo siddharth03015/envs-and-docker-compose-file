@@ -1,0 +1,6 @@
+exchange-engine
+*.db
+*.db-shm
+*.db-wal
+.env
+.git

@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "synthetic-bull-terminal",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "main": ".open-next/worker.js",
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      // Self-reference service binding — the service name must match the worker name above.
+      // Required for ISR/on-demand revalidation. See https://opennext.js.org/cloudflare/caching
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "synthetic-bull-terminal"
+    }
+  ],
+  "r2_buckets": [
+    {
+      // R2 incremental cache — create this bucket before deploying:
+      //   npx wrangler r2 bucket create synthetic-bull-terminal-opennext-cache
+      // See https://opennext.js.org/cloudflare/caching
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "synthetic-bull-terminal-opennext-cache"
+    }
+  ],
+  "images": {
+    // Enables Cloudflare's built-in image optimization for next/image.
+    // See https://opennext.js.org/cloudflare/howtos/image
+    "binding": "IMAGES"
+  }
+}
