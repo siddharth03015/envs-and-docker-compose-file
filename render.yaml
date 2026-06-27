@@ -10,13 +10,9 @@ services:
       - key: PORT
         value: "8080"
       - key: DB_PATH
-        value: /data/exchange.db
+        value: /tmp/exchange.db
       - key: JWT_SECRET
         value: synthetic-bull-secret-2026
-    disk:
-      name: exchange-data
-      mountPath: /data
-      sizeGB: 1
 
   # ── Web Terminal (Next.js) ───────────────────────────────────────────────────
   - type: web
